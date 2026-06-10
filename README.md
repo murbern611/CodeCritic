@@ -1,4 +1,8 @@
-# CodeCritic ⚡ — 多智能体代码评审辩论系统
+<p align="center">
+  <img src="./logo.png" alt="CodeCritic Logo" width="120">
+</p>
+
+<h1 align="center">CodeCritic ⚡ — 多智能体代码评审辩论系统</h1>
 
 > 基于 LangChain + LangGraph 的多智能体协作框架，让多个专业 Agent 从不同维度审查代码，通过辩论机制达成共识，输出高质量评审报告。
 
