@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/🇨🇳-中文-0078D4?style=for-the-badge" alt="中文"></a>
+  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/中文-0078D4?style=flat" alt="中文"></a>
   &nbsp;
-  <a href="README.en.md"><img src="https://img.shields.io/badge/🇬🇧-English-10A37F?style=for-the-badge" alt="English"></a>
+  <a href="README.en.md"><img src="https://img.shields.io/badge/English-10A37F?style=flat" alt="English"></a>
 </p>
 
 ---
