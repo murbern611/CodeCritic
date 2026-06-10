@@ -1,0 +1,124 @@
+# ============================================================
+# CodeCritic 全局配置
+# ============================================================
+
+project:
+  name: "CodeCritic"
+  version: "0.1.0"
+  description: "多智能体代码评审辩论系统"
+
+# --- LLM 全局设置 ---
+llm:
+  # 默认提供方: openai | anthropic | azure | ollama | openai_compatible
+  provider: openai
+  # 默认模型（各 Agent 可在 agents.yaml 中覆盖）
+  default_model: gpt-4o-mini
+  # 请求超时（秒）
+  timeout: 60
+  # 失败重试次数
+  max_retries: 3
+
+# --- Agent 设置 ---
+agents:
+  # 自动发现 plugins/agents/ 目录下的 Agent
+  auto_discover: true
+  # 并行执行审查
+  parallel: true
+  # 默认 temperature
+  default_temperature: 0.2
+
+# --- 辩论设置 ---
+debate:
+  # 启用辩论功能
+  enabled: true
+  # 最大辩论轮次
+  max_rounds: 3
+  # 分歧触发阈值（两 Agent confidence 差值超过此值视为分歧）
+  min_confidence_diff: 0.3
+  # 辩论前需要用户确认
+  require_human_approval: true
+  # 辩论收敛条件：连续 N 轮无新论点即视为收敛
+  convergence_streak: 2
+
+# --- 分歧检测设置 ---
+judge:
+  # 分歧检测的匹配字段
+  match_fields:
+    - category
+    - line_start
+    - line_end
+  # 是否在检测到分歧时自动展示对比表格
+  show_comparison_table: true
+
+# --- 记忆系统 ---
+memory:
+  enabled: true
+  # 记忆后端: sqlite | json
+  backend: sqlite
+  path: ./data/memory/memory.db
+  # 会话记忆保留时间（秒）
+  session_ttl: 3600
+  # 项目记忆保留时间（秒，默认 7 天）
+  project_ttl: 604800
+  # 自动摘要旧记忆
+  auto_summarize: true
+  # 每个 Agent 记忆上下文上限（Token）
+  max_tokens_per_agent: 2000
+
+# --- Token 追踪 ---
+token_tracking:
+  enabled: true
+  log_level: info
+  # 保存历史记录
+  save_history: true
+  # 历史记录路径
+  history_path: ./data/token_history.jsonl
+
+# --- 预算控制 ---
+budget:
+  enabled: true
+  # 单次运行最大 Token
+  max_per_run: 100000
+  # 每日最大 Token
+  max_per_day: 500000
+  # 超出限制时的行为: warn | stop | truncate
+  action_on_exceed: warn
+  # 单次费用上限（美元）
+  cost_limit_usd: 0.5
+
+# --- Prompt 缓存设置 ---
+cache:
+  enabled: true
+  # 最小共享前缀 Token 数（低于此值不启用缓存，太小不值得）
+  min_prefix_tokens: 512
+  # Anthropic Prompt Caching（代码块加 cache_control 标记）
+  anthropic_cache_control: true
+  # OpenAI Prompt Caching（前缀 > 1024 tokens 自动缓存）
+  openai_auto_cache: true
+  # vLLM 自动前缀缓存
+  vllm_prefix_caching: true
+  # 日志中显示缓存命中信息
+  show_cache_hits: true
+
+# --- 输出设置 ---
+output:
+  # 输出格式: markdown | json | html | sarif
+  formats:
+    - markdown
+    - json
+    - html
+  # 运行后自动打开报告
+  open_report: true
+  # 终端彩色输出
+  colorize: true
+  # 报告输出目录
+  report_dir: ./data/reports
+
+# --- UI 设置 ---
+ui:
+  # 模式: cli | web
+  mode: cli
+  # 详细输出
+  verbose: false
+  # 显示进度条
+  show_progress: true

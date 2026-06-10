@@ -1,0 +1,84 @@
+# ============================================================
+# 模型定义
+#
+# 所有可配置参数都放在此文件，支持 ${VAR} 模板引用环境变量。
+# .env 文件存放实际的 API Key，不上传 Git。
+#
+# 参数说明：
+#   provider:    openai | anthropic | openai_compatible | ollama
+#   model_name:  实际模型名（传给 API 的 model 参数）
+#   api_key:     ${ENV_VAR_NAME} 或直接写 Key（不推荐）
+#   base_url:    可选，API 端点地址
+#   max_tokens:  最大输出 Token 数
+#   temperature: 采样温度
+# ============================================================
+
+models:
+  # --- OpenAI ---
+  gpt-4o:
+    provider: openai
+    model_name: gpt-4o
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_BASE_URL}
+    max_tokens: 8192
+    temperature: 0.2
+
+  gpt-4o-mini:
+    provider: openai
+    model_name: gpt-4o-mini
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_BASE_URL}
+    max_tokens: 16384
+    temperature: 0.1
+
+  gpt-4.1:
+    provider: openai
+    model_name: gpt-4.1
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_BASE_URL}
+    max_tokens: 8192
+    temperature: 0.2
+
+  # --- Anthropic ---
+  claude-sonnet-4:
+    provider: anthropic
+    model_name: claude-sonnet-4-20250514
+    api_key: ${ANTHROPIC_API_KEY}
+    max_tokens: 8192
+    temperature: 0.2
+
+  claude-haiku-4:
+    provider: anthropic
+    model_name: claude-haiku-4-20250514
+    api_key: ${ANTHROPIC_API_KEY}
+    max_tokens: 8192
+    temperature: 0.1
+
+  # --- DeepSeek V4 Flash ---
+  deepseek-v4-flash:
+    provider: openai_compatible
+    model_name: deepseek-v4-flash
+    api_key: ${DEEPSEEK_API_KEY}
+    base_url: ${DEEPSEEK_BASE_URL}
+    max_tokens: 384000
+    temperature: 0.2
+    notes: "输入1元/1M, 输出2元/1M, 缓存命中0.02元/1M, 并发2500"
+
+  # --- DeepSeek V4 Pro ---
+  deepseek-v4-pro:
+    provider: openai_compatible
+    model_name: deepseek-v4-pro
+    api_key: ${DEEPSEEK_API_KEY}
+    base_url: ${DEEPSEEK_BASE_URL}
+    max_tokens: 384000
+    temperature: 0.2
+    notes: "输入3元/1M, 输出6元/1M, 缓存命中0.025元/1M, 并发500"
+
+  # --- Ollama 本地模型 ---
+  ollama-llama3:
+    provider: ollama
+    model_name: llama3
+    api_key: ollama  # Ollama 不需要 Key
+    base_url: ${OLLAMA_BASE_URL}
+    max_tokens: 4096
+    temperature: 0.2
