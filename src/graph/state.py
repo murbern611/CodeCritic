@@ -34,6 +34,8 @@ class CodeCriticState(MessagesState):
     code_language: Optional[str] = None  # 代码语言
     file_path: Optional[str] = None      # 源文件路径
     context: dict[str, Any] = {}         # 额外上下文
+    diff_mode: bool = False              # ★ 是否使用 diff 审查模式
+    diff_text: str = ""                  # ★ diff 格式的文本（diff_mode=True 时代替 code 传给 Agent）
 
     # --- 审查阶段 ---
     agent_reviews: dict[str, AgentReview] = {}  # agent_name -> review

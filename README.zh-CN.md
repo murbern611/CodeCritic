@@ -15,6 +15,7 @@
 - [工作流程](#工作流程)
 - [功能特性](#功能特性)
   - [多智能体辩论机制](#1-多智能体辩论机制)
+  - [Diff 感知审查](#7-diff-感知审查)
   - [记忆系统](#2-记忆系统)
   - [Token 消耗追踪](#3-token-消耗追踪)
   - [自定义智能体 Prompt](#4-自定义智能体-prompt)
@@ -282,6 +283,38 @@ Phase 2 ── 并行执行（命中缓存）
 
 ---
 
+### 7. Diff 感知审查
+
+支持基于 `git diff` 的增量代码审查，仅审查变更的代码行，大幅节省 Token 并聚焦于真正的改动。
+
+**两种使用方式：**
+
+**Web UI：** 点击「Diff 审查」模式切换标签，上传 `.diff` 文件或粘贴 `git diff` 输出。
+
+**CLI：** 三种命令适应不同场景：
+
+```bash
+# 方式一：对比两个文件
+python main.py diff-review old.py new.py
+
+# 方式二：直接解析 git diff 输出
+git diff HEAD~1 > changes.diff
+python main.py git-diff changes.diff
+
+# 方式三：管道传 stdin
+git diff HEAD~1 | python main.py git-diff
+
+# 批量扫描 + git diff 过滤
+python main.py scan ./src/ --git-diff HEAD~1
+```
+
+**实现原理：**
+- `src/diff/parser.py` 使用正则解析 unified diff 格式，分离出 `+`（新增行）、`-`（删除行）和上下文行
+- 送入 LLM 时标记 `+` 行为重点审查目标，`-` 行会被忽略，上下文行仅供参考
+- 完整的审查管道（解析 → 并行审查 → 分歧检测 → 辩论 → 仲裁）同样适用于 Diff 模式
+
+---
+
 ## 快速开始
 
 ### 环境要求
@@ -293,20 +326,20 @@ Phase 2 ── 并行执行（命中缓存）
 
 ```bash
 # 1. 进入项目目录
-cd "E:\系统文件\桌面\预测学习\minimind-master\langchain"
+cd CodeCritic
 
-# 2. 激活虚拟环境
-.venv\Scripts\activate     # Windows
-# source .venv/bin/activate  # Linux/Mac
+# 2. 安装依赖
+pip install -r requirements.txt
 
 # 3. 配置环境变量
+cp .env.example .env
 # 编辑 .env 填入你的 API Key
 ```
 
 ### 启动 Web UI
 
 ```bash
-.venv\Scripts\python -m uvicorn web.server:app --host 127.0.0.1 --port 8088
+uvicorn web.server:app --host 127.0.0.1 --port 8088
 ```
 
 打开浏览器访问 `http://127.0.0.1:8088`
@@ -314,11 +347,20 @@ cd "E:\系统文件\桌面\预测学习\minimind-master\langchain"
 ### CLI 模式
 
 ```bash
-# 分析一个代码文件
-python main.py --file examples/sample_code.py
+# 审查一个代码文件
+python main.py file myapp.py
+
+# Diff 审查：对比两个文件
+python main.py diff-review old.py new.py
+
+# Diff 审查：读取 git diff 文件
+python main.py git-diff changes.diff
+
+# 批量扫描目录
+python main.py scan ./src/
 
 # 交互模式
-python main.py --interactive
+python main.py interactive
 ```
 
 ---
@@ -342,6 +384,10 @@ CodeCritic/
 │       └── index.html          # 前端页面（GPT 风格 UI）
 │
 ├── src/
+│   ├── diff/
+│   │   ├── __init__.py
+│   │   └── parser.py          # Diff 解析、生成与 LLM 格式化
+│   │
 │   ├── core/
 │   │   └── service.py          # 审查核心服务
 │   │
@@ -481,11 +527,14 @@ python main.py --interactive
 - [x] Token 追踪与费用估算
 - [x] 对话管理（新建/切换/删除）
 - [x] 自定义模型配置（Web UI）
-- [ ] 报告导出（Markdown / JSON）
+- [x] Diff 感知增量审查（CLI + Web UI）
+- [x] 批量目录扫描
+- [x] 报告导出（Markdown / JSON）
 
 ### 未来计划
 - [ ] CI/CD 集成（GitHub Action）
 - [ ] VS Code 插件
+- [ ] PR 自动审查（GitHub App）
 - [ ] 基准测试与准确率验证
 
 ---

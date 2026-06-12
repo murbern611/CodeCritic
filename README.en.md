@@ -22,6 +22,7 @@
   - [Custom Agent Prompts](#4-custom-agent-prompts)
   - [Structured Output](#5-structured-output)
   - [Prompt Cache System (KV Cache Sharing)](#6-prompt-cache-systemkv-cache-sharing)
+  - [Diff-Aware Code Review](#7-diff-aware-code-review)
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
@@ -248,6 +249,36 @@ Phase 2 ── Parallel Execution (cache hit)
 
 ---
 
+### 7. Diff-Aware Code Review
+
+Review only changed lines using `git diff` — saves tokens and focuses on what matters.
+
+**Web UI:** Switch to "Diff Review" mode tab, upload a `.diff` file or paste `git diff` output.
+
+**CLI:** Three commands for different scenarios:
+
+```bash
+# Compare two files
+python main.py diff-review old.py new.py
+
+# Parse a git diff file
+git diff HEAD~1 > changes.diff
+python main.py git-diff changes.diff
+
+# Pipe from stdin
+git diff HEAD~1 | python main.py git-diff
+
+# Batch scan with git diff filter
+python main.py scan ./src/ --git-diff HEAD~1
+```
+
+**How it works:**
+- `src/diff/parser.py` parses unified diff format using regex, separating `+` (added), `-` (deleted), and context lines
+- LLM receives diff with markers: `+` lines are the review focus, `-` lines are skipped, context is for reference only
+- The full review pipeline (parse → parallel review → conflict detection → debate → arbitrate) works identically in diff mode
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -261,15 +292,10 @@ Phase 2 ── Parallel Execution (cache hit)
 # 1. Enter project directory
 cd CodeCritic
 
-# 2. Set up virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-
-# 3. Install dependencies
+# 2. Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure environment
+# 3. Configure environment
 cp .env.example .env
 # Edit .env with your API keys
 ```
@@ -286,10 +312,19 @@ Open your browser at `http://127.0.0.1:8088`
 
 ```bash
 # Review a file
-python main.py --file examples/sample_code.py
+python main.py file myapp.py
+
+# Diff review: compare two files
+python main.py diff-review old.py new.py
+
+# Diff review: read git diff file
+python main.py git-diff changes.diff
+
+# Batch scan directory
+python main.py scan ./src/
 
 # Interactive mode
-python main.py --interactive
+python main.py interactive
 ```
 
 ---
@@ -311,6 +346,10 @@ CodeCritic/
 │       └── index.html          # Frontend (GPT-style UI)
 │
 ├── src/
+│   ├── diff/
+│   │   ├── __init__.py
+│   │   └── parser.py          # Diff parsing, generation & LLM formatting
+│   │
 │   ├── graph/
 │   │   ├── builder.py          # LangGraph graph builder
 │   │   ├── nodes.py            # Graph node functions
@@ -406,10 +445,19 @@ Open `http://127.0.0.1:8088`, paste code, select agents, click send.
 
 ```bash
 # Review a file
-python main.py --file myapp.py
+python main.py file myapp.py
+
+# Diff review: compare two files
+python main.py diff-review old.py new.py
+
+# Diff review: read git diff file
+python main.py git-diff changes.diff
+
+# Batch scan directory
+python main.py scan ./src/
 
 # Interactive mode
-python main.py --interactive
+python main.py interactive
 ```
 
 ---
@@ -446,11 +494,14 @@ python main.py --interactive
 - [x] Token tracking & cost estimation
 - [x] Conversation management (new/switch/delete)
 - [x] Custom model config (Web UI)
-- [ ] Report export (Markdown / JSON)
+- [x] Diff-aware incremental review (CLI + Web UI)
+- [x] Batch directory scanning
+- [x] Report export (Markdown / JSON)
 
 ### Future Plans
 - [ ] CI/CD integration (GitHub Action)
 - [ ] VS Code extension
+- [ ] PR auto-review (GitHub App)
 - [ ] Benchmark testing & accuracy validation
 
 ---

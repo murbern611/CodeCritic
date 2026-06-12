@@ -147,9 +147,10 @@ class ReviewService:
         skip_debate: bool = False,
         session_id: str = "",
         memory_enabled: bool = True,
+        **extra_state,
     ) -> CodeCriticState:
         """构建审查初始状态（配置化，新增 Agent 无需修改此处）"""
-        return {
+        state = {
             "code": code,
             "code_language": language,
             "file_path": file_path,
@@ -158,6 +159,9 @@ class ReviewService:
             "memory_enabled": memory_enabled,
             "context": {"language": language},
         }
+        # 合并额外状态（用于 diff_mode 等扩展）
+        state.update(extra_state)
+        return state
 
     def _execute_graph(
         self, initial_state: CodeCriticState
@@ -193,12 +197,22 @@ class ReviewService:
         skip_debate: bool = False,
         session_id: str = "",
         memory_enabled: bool = True,
+        **extra_state,
     ) -> CodeCriticState:
         """
         运行完整的代码审查流程。
 
         通过参数配置审查行为，新增 Agent 或审查阶段
         只需调整 ``build_graph()`` 配置，无需修改此方法（开闭原则）。
+
+        Args:
+            code: 源代码文本
+            language: 代码语言
+            file_path: 文件路径
+            skip_debate: 是否跳过辩论
+            session_id: 会话 ID（用于记忆关联）
+            memory_enabled: 是否启用记忆
+            **extra_state: 扩展 state 字段（如 diff_mode=True, diff_text=...）
         """
         initial_state = self._build_initial_state(
             code=code,
@@ -207,5 +221,6 @@ class ReviewService:
             skip_debate=skip_debate,
             session_id=session_id,
             memory_enabled=memory_enabled,
+            **extra_state,
         )
         return self._execute_graph(initial_state)

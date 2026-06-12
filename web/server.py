@@ -63,6 +63,21 @@ class ReviewRequest(BaseModel):
     custom_models: Optional[dict[str, Any]] = None  # 前端新增的自定义模型
 
 
+class DiffReviewRequest(BaseModel):
+    """Diff 审查请求：传两个版本或直接传 diff 文本"""
+    old_code: str = ""           # 旧版本代码（方式一：双文件对比）
+    new_code: str = ""           # 新版本代码
+    diff_text: str = ""          # 方式二：直接传 git diff 文本
+    language: str = "python"
+    enabled_agents: Optional[list[str]] = None
+    skip_debate: bool = True     # Diff 场景默认跳过辩论，省 token
+    memory_enabled: bool = True
+    session_id: Optional[str] = None
+    agent_models: Optional[dict[str, str]] = None
+    model_configs: Optional[dict[str, Any]] = None
+    custom_models: Optional[dict[str, Any]] = None
+
+
 # ── Agent 元数据（前端展示用） ──
 
 AGENT_META: dict[str, dict[str, str]] = {
@@ -166,6 +181,44 @@ def submit_review(req: ReviewRequest):
     return {"task_id": task_id, "status": "queued"}
 
 
+@app.post("/api/review/diff")
+def submit_diff_review(req: DiffReviewRequest):
+    """提交 Diff 审查任务
+
+    两种方式：
+    1. 传 old_code + new_code → 后端自动生成 diff
+    2. 传 diff_text → 直接使用传入的 git diff 文本
+    """
+    from src.diff.parser import format_diff_for_llm, generate_diff, parse_diff
+
+    if req.diff_text:
+        diff_text = req.diff_text
+    elif req.old_code and req.new_code:
+        diff_text = generate_diff(req.old_code, req.new_code)
+    else:
+        raise HTTPException(400, "需要提供 old_code + new_code，或直接提供 diff_text")
+
+    diff_result = parse_diff(diff_text)
+    if not diff_result.files:
+        raise HTTPException(400, "未解析到有效的代码变更")
+
+    llm_diff = format_diff_for_llm(diff_result)
+
+    task_id = f"diff_{uuid.uuid4().hex[:8]}"
+    _review_tasks[task_id] = {"status": "queued", "result": None, "error": None}
+    _executor.submit(_run_diff_review, task_id, req, llm_diff)
+
+    return {
+        "task_id": task_id,
+        "status": "queued",
+        "summary": {
+            "files_changed": len(diff_result.files),
+            "additions": sum(len(f.all_added_lines) for f in diff_result.files),
+            "deletions": sum(len(f.all_deleted_lines) for f in diff_result.files),
+        },
+    }
+
+
 @app.get("/api/review/{task_id}")
 def get_review_result(task_id: str):
     """轮询审查任务结果"""
@@ -234,6 +287,49 @@ def _run_review(task_id: str, req: ReviewRequest):
 
     except Exception as e:
         logger.error(f"审查任务 {task_id} 失败: {e}")
+        _review_tasks[task_id]["status"] = "error"
+        _review_tasks[task_id]["error"] = str(e)
+
+
+def _run_diff_review(task_id: str, req: DiffReviewRequest, llm_diff: str):
+    """在后台线程中执行 Diff 审查流程"""
+    _review_tasks[task_id]["status"] = "running"
+    try:
+        graph = build_graph()
+
+        initial_state: CodeCriticState = {
+            "code": llm_diff,
+            "code_language": "diff",
+            "file_path": "diff-review",
+            "skip_debate": req.skip_debate,
+            "session_id": req.session_id or f"web_diff_{task_id}",
+            "memory_enabled": req.memory_enabled,
+            "enabled_agents": req.enabled_agents,
+            "agent_models": req.agent_models,
+            "model_configs": req.model_configs,
+            "custom_models": req.custom_models,
+            "context": {"language": "diff", "review_mode": "diff"},
+            "diff_mode": True,
+            "diff_text": llm_diff,
+        }
+
+        config = {"configurable": {"thread_id": task_id}}
+        result = graph.invoke(initial_state, config)
+
+        final = result.get("final_report")
+        if final is not None:
+            report_data = _sanitize_report(final.model_dump())
+            _review_tasks[task_id] = {
+                "status": "completed",
+                "result": report_data,
+            }
+        else:
+            error_msg = result.get("errors", ["未知错误"])[0]
+            _review_tasks[task_id]["status"] = "error"
+            _review_tasks[task_id]["error"] = error_msg
+
+    except Exception as e:
+        logger.error(f"Diff 审查任务 {task_id} 失败: {e}")
         _review_tasks[task_id]["status"] = "error"
         _review_tasks[task_id]["error"] = str(e)
 

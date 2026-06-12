@@ -385,6 +385,7 @@ input, textarea { font-family: inherit; }
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   position: relative;
 }
 
@@ -393,6 +394,7 @@ input, textarea { font-family: inherit; }
    ════════════════════════════════════════════════ */
 #chat {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0;
 }
@@ -716,6 +718,114 @@ input, textarea { font-family: inherit; }
   color: var(--text-muted);
   font-family: var(--font-sans);
 }
+
+/* ———— 模式切换 ———— */
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.mode-tab {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+}
+.mode-tab:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+.mode-tab.active { background: var(--accent-green); border-color: var(--accent-green); color: white; }
+.mode-tab .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: 0.4; }
+.mode-tab.active .dot { opacity: 1; }
+
+/* Diff 模式提示 - 紧凑版 */
+.diff-info {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #FFF8E1;
+  border: 1px solid #FFE082;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  color: #795548;
+  line-height: 1.5;
+  display: none;
+}
+.diff-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.diff-info code {
+  background: #FFF3CD;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.diff-upload-btn {
+  padding: 6px 14px;
+  background: var(--accent-green);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.diff-upload-btn:hover { background: var(--accent-green-hover); }
+.diff-file-label { font-size: 12px; color: var(--text-secondary); }
+
+.diff-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid #FFE082;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 12.5px;
+  color: #795548;
+  line-height: 1.7;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 340px;
+}
+#diff-help-btn:hover .diff-tooltip {
+  display: block;
+}
+.diff-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #FFE082;
+}
+.diff-tooltip code {
+  background: #FFF3CD;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.diff-tooltip .hl-add { color: #2E7D32; font-weight: 600; }
+.diff-tooltip .hl-del { color: #D32F2F; font-weight: 600; }
+
+#code-input::placeholder {
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+}
 #send-btn {
   position: absolute;
   right: 8px;
@@ -739,7 +849,7 @@ input, textarea { font-family: inherit; }
 /* 文件上传按钮 */
 #upload-btn {
   position: absolute;
-  right: 96px;
+  right: 140px;
   bottom: 8px;
   width: 36px;
   height: 36px;
@@ -760,7 +870,7 @@ input, textarea { font-family: inherit; }
 }
 #folder-btn {
   position: absolute;
-  right: 52px;
+  right: 96px;
   bottom: 8px;
   width: 36px;
   height: 36px;
@@ -779,6 +889,30 @@ input, textarea { font-family: inherit; }
   background: var(--bg-hover);
   color: var(--accent-blue);
   border-color: var(--accent-blue);
+}
+#diff-help-btn {
+  position: absolute;
+  right: 52px;
+  bottom: 8px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 18px;
+  font-weight: 600;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  cursor: pointer;
+  z-index: 10;
+}
+#diff-help-btn:hover {
+  background: var(--bg-hover);
+  color: var(--accent-green);
+  border-color: var(--accent-green);
 }
 #file-name {
   position: absolute;
@@ -893,10 +1027,21 @@ input, textarea { font-family: inherit; }
     
     <div id="input-area">
       <div id="input-container">
-        <input type="file" id="file-input" accept=".py,.js,.ts,.java,.go,.rs,.rb,.c,.cpp,.cs,.swift,.kt,.txt,.jsx,.tsx"
+        <!-- 模式切换 -->
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="full" onclick="switchMode('full')">
+            <span class="dot"></span> 完整审查
+          </button>
+          <button class="mode-tab" data-mode="diff" onclick="switchMode('diff')">
+            <span class="dot"></span> Diff 审查
+          </button>
+        </div>
+        <input type="file" id="file-input" accept=".py,.js,.ts,.java,.go,.rs,.rb,.c,.cpp,.cs,.swift,.kt,.txt,.jsx,.tsx,.diff,.patch"
                style="display:none" onchange="handleFileUpload(event)">
+        <input type="file" id="file-diff-input" accept=".diff,.patch,.txt"
+               style="display:none" onchange="handleDiffFileUpload(event)">
         <input type="file" id="folder-input" webkitdirectory style="display:none" onchange="handleFolderUpload(event)">
-        <textarea id="code-input" placeholder="在此粘贴代码、上传文件，或选择文件夹上传整个项目" spellcheck="false"></textarea>
+        <textarea id="code-input" placeholder="在此粘贴代码，或上传 .py / .js / .ts 等代码文件" spellcheck="false"></textarea>
         <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="上传代码文件">
           📎
         </button>
@@ -907,8 +1052,38 @@ input, textarea { font-family: inherit; }
           <span id="send-icon">↵</span>
         </button>
         <span id="file-name"></span>
+        <!-- Diff 模式提示（紧凑行 + 悬浮工具提示） -->
+        <div class="diff-info" id="diff-info">
+          <div class="diff-info-row">
+            <button class="diff-upload-btn" onclick="document.getElementById('file-diff-input').click()">
+              📂 上传 .diff 文件
+            </button>
+            <span class="diff-file-label" id="diff-file-name">未选择文件</span>
+          </div>
+        </div>
+        <button id="diff-help-btn" title="Diff 审查使用方法">
+          ?
+          <span class="diff-tooltip" id="diff-tooltip">
+            <div style="margin-bottom:5px;"><b>📋 Diff 审查使用方法</b></div>
+            <div style="line-height:1.8;">
+              <b>方法一：</b>上传 <code>.diff</code> 文件<br>
+              <span style="color:#8D6E63;font-size:12px;margin-left:12px;">
+                在项目目录运行 <code>git diff HEAD~1 &gt; changes.diff</code>，然后上传
+              </span><br>
+              <b>方法二：</b>直接粘贴<br>
+              <span style="color:#8D6E63;font-size:12px;margin-left:12px;">
+                运行 <code>git diff HEAD~1</code>，复制终端输出粘贴到文本框
+              </span>
+            </div>
+            <div style="margin-top:6px;font-size:12px;color:#8D6E63;border-top:1px solid #FFE082;padding-top:5px;">
+              <span class="hl-add">+ 新增行</span> 重点审查 ·
+              <span class="hl-del">- 删除行</span> 忽略 ·
+              无标记行仅供参考
+            </div>
+          </span>
+        </button>
       </div>
-      <div class="input-footer">
+      <div class="input-footer" id="input-footer">
         CodeCritic 所有 Agent 共享代码缓存
       </div>
     </div>
@@ -1065,6 +1240,7 @@ const state = {
   reviewing: false,
   taskId: null,
   pollInterval: null,
+  diffMode: false,
   // 对话管理
   conversations: (_saved && _saved.conversations) || [],
   currentConvId: null,
@@ -1771,6 +1947,58 @@ function handleFolderUpload(event) {
 }
 
 /* ════════════════════════════════════════════════
+   模式切换：完整审查 / Diff 审查
+   ════════════════════════════════════════════════ */
+function switchMode(mode) {
+  state.diffMode = (mode === 'diff');
+
+  // 切换 tab 样式
+  document.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.mode === mode);
+  });
+
+  const textarea = document.getElementById('code-input');
+  const diffInfo = document.getElementById('diff-info');
+  const diffHelpBtn = document.getElementById('diff-help-btn');
+  const footer = document.getElementById('input-footer');
+
+  if (state.diffMode) {
+    textarea.placeholder = '在此粘贴 git diff 输出，或上传 .diff 文件';
+    diffInfo.style.display = 'block';
+    diffHelpBtn.style.display = 'flex';
+    footer.textContent = 'Diff 模式 · Agent 仅审查 + 新增的代码行';
+    // 清空 + 聚焦
+    textarea.value = '';
+  } else {
+    textarea.placeholder = '在此粘贴代码，或上传 .py / .js / .ts 等代码文件';
+    diffInfo.style.display = 'none';
+    diffHelpBtn.style.display = 'none';
+    footer.textContent = 'CodeCritic 所有 Agent 共享代码缓存';
+  }
+  textarea.focus();
+}
+
+/* 处理 .diff 文件上传 */
+function handleDiffFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const label = document.getElementById('diff-file-name');
+  label.textContent = file.name;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const textarea = document.getElementById('code-input');
+    textarea.value = e.target.result;
+    textarea.focus();
+  };
+  reader.readAsText(file, 'utf-8');
+
+  // 重置 input 以允许重复上传同一文件
+  event.target.value = '';
+}
+
+/* ════════════════════════════════════════════════
    提交审查
    ════════════════════════════════════════════════ */
 async function submitReview() {
@@ -1798,8 +2026,11 @@ async function submitReview() {
   state.reviewing = true;
   updateButtonState(true);
 
-  // 添加用户消息
-  addUserMessage(code);
+  if (state.diffMode) {
+    addUserMessage('📋 Diff 审查:\n' + code.slice(0, 200) + (code.length > 200 ? '...' : ''));
+  } else {
+    addUserMessage(code);
+  }
 
   // 清空输入框
   document.getElementById('code-input').value = '';
@@ -1809,31 +2040,49 @@ async function submitReview() {
   if (welcome) welcome.style.display = 'none';
 
   // 添加加载消息
-  const loadingMsg = addLoadingMessage('正在审查代码中', enabledAgents);
+  const loadingMsg = addLoadingMessage(state.diffMode ? '正在 Diff 审查中' : '正在审查代码中', enabledAgents);
 
   try {
-    // 提交审查
-    const res = await fetch('/api/review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    let endpoint, body;
+    if (state.diffMode) {
+      endpoint = '/api/review/diff';
+      body = {
+        diff_text: code,
+        enabled_agents: enabledAgents,
+        skip_debate: true,
+        memory_enabled: memoryEnabled,
+        session_id: state.currentConvId,
+        agent_models: Object.fromEntries(
+          state.agents.filter(a => a.enabled && a.model).map(a => [a.key, a.model])
+        ),
+        model_configs: Object.fromEntries(
+          Object.entries(state.modelConfigs).filter(([_, v]) => v.api_key || v.base_url)
+        ),
+        custom_models: state.customModels,
+      };
+    } else {
+      endpoint = '/api/review';
+      body = {
         code,
         language: 'python',
         enabled_agents: enabledAgents,
         skip_debate: skipDebate,
-        // 每个 Agent 选择的模型
         agent_models: Object.fromEntries(
           state.agents.filter(a => a.enabled && a.model).map(a => [a.key, a.model])
         ),
         memory_enabled: memoryEnabled,
         session_id: state.currentConvId,
-        // 用户覆盖的模型配置（API Key / Base URL）
         model_configs: Object.fromEntries(
           Object.entries(state.modelConfigs).filter(([_, v]) => v.api_key || v.base_url)
         ),
-        // 前端新增的自定义模型
         custom_models: state.customModels,
-      }),
+      };
+    }
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {

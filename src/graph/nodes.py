@@ -269,6 +269,32 @@ def review_code(state: CodeCriticState) -> dict:
                 f"（第 1 个预热，其余 %d 个享缓存）" % (len(group.agent_keys) - 1 if len(group.agent_keys) > 1 else 0)
             )
 
+    # === Diff 模式：用 diff 文本替换原始代码，注入 diff 审查指令 ===
+    diff_mode = state.get("diff_mode", False)
+    diff_instruction = None
+    if diff_mode and state.get("diff_text"):
+        # 替换 shared_ctx 中的代码为 diff 文本
+        shared_ctx = SharedCodeContext(
+            code=state["diff_text"],
+            language="diff",
+            file_path=state.get("file_path"),
+            extra_context={**context, "review_mode": "diff"},
+        )
+        diff_instruction = (
+            "【重要 — Diff 模式审查规则】\n"
+            "你收到的内容不是完整代码，而是 git diff 格式的代码变更。\n\n"
+            "格式说明：\n"
+            '  - "+" 开头的行 -> 新增的代码（请重点审查这些行）\n'
+            '  - "-" 开头的行 -> 删除的代码（无需关注）\n'
+            "  - 没有前缀的行 -> 上下文（仅用于理解变更意图，不要对其提意见）\n\n"
+            "请严格遵循以下原则：\n"
+            "1. 只对 + 行（新增代码）提出审查意见\n"
+            "2. 如果 + 行不在你的专业范围内，请明确说未发现问题\n"
+            "3. 不要对 - 行或上下文行提意见——它们要么已删除，要么没变动\n"
+            "4. 行号以 + 行旁边的行号为准\n"
+        )
+        logger.info(f"Diff 模式已启用，diff 文本 {len(state['diff_text'])} 字符")
+
     # === 加载历史记忆 ===
     memory_context = None
     if state.get("memory_enabled", True) and state.get("session_id"):
@@ -301,7 +327,12 @@ def review_code(state: CodeCriticState) -> dict:
             first_batch[key] = agent
 
     def _run_one(agent_key: str, agent_obj: BaseAgent) -> tuple[str, Any]:
-        extra = [memory_context] if memory_context else None
+        extra = []
+        if diff_instruction:
+            extra.append(diff_instruction)
+        if memory_context:
+            extra.append(memory_context)
+        extra = extra or None
         result = agent_obj.review_cached(shared_ctx=shared_ctx, extra_contents=extra)
         logger.info(
             f"  [{agent_obj.agent_label}] "
